@@ -704,6 +704,7 @@ class WiFiSetupViewController: UIViewController {
         
         // Configure scroll view
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.delaysContentTouches = false
         contentView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
@@ -859,6 +860,19 @@ class WiFiSetupViewController: UIViewController {
         networksTableView.dataSource = self
         networksTableView.register(WiFiNetworkCell.self, forCellReuseIdentifier: "NetworkCell")
         networksTableView.separatorStyle = .none
+        networksTableView.isUserInteractionEnabled = true
+        networksTableView.allowsSelection = true
+        networksTableView.delaysContentTouches = false
+        
+        // Fix gesture recognizer conflicts with parent scroll view
+        scrollView.panGestureRecognizer.require(toFail: networksTableView.panGestureRecognizer)
+        
+        // Add backup tap gesture recognizer
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(tableViewTapped(_:)))
+        tapGesture.cancelsTouchesInView = false
+        networksTableView.addGestureRecognizer(tapGesture)
+        
+        print("Table view setup complete - interaction enabled: \(networksTableView.isUserInteractionEnabled)")
     }
     
     private func setupKeyboardHandling() {
@@ -996,6 +1010,14 @@ class WiFiSetupViewController: UIViewController {
     
     // MARK: - Actions
     
+    @objc private func tableViewTapped(_ gesture: UITapGestureRecognizer) {
+        let location = gesture.location(in: networksTableView)
+        if let indexPath = networksTableView.indexPathForRow(at: location) {
+            print("Backup tap gesture detected at index: \(indexPath.row)")
+            tableView(networksTableView, didSelectRowAt: indexPath)
+        }
+    }
+    
     @objc private func scanNetworksTapped() {
         Task {
             await scanNetworks()
@@ -1095,8 +1117,11 @@ extension WiFiSetupViewController: UITableViewDataSource, UITableViewDelegate {
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        print("Network cell tapped at index: \(indexPath.row)")
         tableView.deselectRow(at: indexPath, animated: true)
-        selectNetwork(networks[indexPath.row])
+        let network = networks[indexPath.row]
+        print("Selected network: \(network.ssid)")
+        selectNetwork(network)
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
@@ -1134,20 +1159,26 @@ class WiFiNetworkCell: UITableViewCell {
     
     private func setupUI() {
         backgroundColor = .clear
+        selectionStyle = .default
+        isUserInteractionEnabled = true
         
         nameLabel.font = .systemFont(ofSize: 16, weight: .semibold)
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        nameLabel.isUserInteractionEnabled = false
         
         frequencyLabel.font = .systemFont(ofSize: 12, weight: .medium)
         frequencyLabel.textColor = .systemBlue
         frequencyLabel.translatesAutoresizingMaskIntoConstraints = false
+        frequencyLabel.isUserInteractionEnabled = false
         
         securityLabel.font = .systemFont(ofSize: 12, weight: .medium)
         securityLabel.textColor = .secondaryLabel
         securityLabel.translatesAutoresizingMaskIntoConstraints = false
+        securityLabel.isUserInteractionEnabled = false
         
         signalImageView.translatesAutoresizingMaskIntoConstraints = false
         signalImageView.contentMode = .scaleAspectFit
+        signalImageView.isUserInteractionEnabled = false
         
         [nameLabel, frequencyLabel, securityLabel, signalImageView].forEach {
             contentView.addSubview($0)
