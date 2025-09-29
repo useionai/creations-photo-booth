@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct PhotoBoothAppApp: App {
+    @StateObject private var coordinator = MainCoordinator(window: nil)
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainAppView()
+                .environmentObject(coordinator)
         }
     }
 }
